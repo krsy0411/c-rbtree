@@ -102,7 +102,7 @@ void rotate_right(rbtree *t, node_t *x)
 void rbtree_insert_fixup(rbtree *t, node_t *node)
 {
   // insert때 fixup이 발생하는 경우 : "double red" 상황일 때
-  while((node->parent->color) == RBTREE_RED)
+  while(node->parent != t->nil && (node->parent->color) == RBTREE_RED)
   {
     // 크게 부모노드가 그 부모의 왼쪽 자식인 경우 & 오른쪽 자식인 경우로 갈림
     if((node->parent) == (node->parent->parent->left))
@@ -221,7 +221,28 @@ node_t *rbtree_insert(rbtree *t, const key_t key) {
 
 node_t *rbtree_find(const rbtree *t, const key_t key) {
   // TODO: implement find
-  return t->root;
+  node_t *current_node = t->root;
+
+  // 최대한 내려가면서 키값 찾기
+  while(current_node != t->nil)
+  {
+    if(current_node->key > key)
+    {
+      current_node = current_node->left;
+    }
+    else if(current_node->key < key)
+    {
+      current_node = current_node->right;
+    }
+    else
+    {
+      // 해당하는 키값을 찾은 경우
+      return current_node;
+    }
+  }
+
+  // 키를 찾지 못한 경우
+  return NULL;
 }
 
 node_t *rbtree_min(const rbtree *t) {
