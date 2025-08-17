@@ -261,8 +261,18 @@ node_t *rbtree_min(const rbtree *t) {
 }
 
 node_t *rbtree_max(const rbtree *t) {
-  // TODO: implement find
-  return t->root;
+  if(t->root == t->nil)
+  {
+    return NULL;
+  }
+
+  node_t *current_node = t->root;
+  while(current_node->right != t->nil)
+  {
+    current_node = current_node->right;
+  }
+
+  return current_node;
 }
 
 int rbtree_erase(rbtree *t, node_t *p) {
