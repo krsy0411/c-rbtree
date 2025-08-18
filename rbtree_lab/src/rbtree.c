@@ -275,8 +275,173 @@ node_t *rbtree_max(const rbtree *t) {
   return current_node;
 }
 
+void rbtree_transplant(rbtree *t, node_t *u, node_t *v)
+{
+  if(u->parent == t->nil)
+  {
+    t->root = v;
+  }
+  else if(u == u->parent->left)
+  {
+    u->parent->left = v;
+  }
+  else
+  {
+    u->parent->right = v;
+  }
+
+  v->parent = u->parent;
+}
+
+node_t* rbtree_minimum(rbtree *t, node_t *node)
+{
+  while(node->left != t->nil)
+  {
+    node = node->left;
+  }
+
+  return node;
+}
+
+void rbtree_erase_fixup(rbtree *t, node_t *x)
+{
+  // 블랙노드가 지워진 경우에 대한 fixup이니까
+  while(x != t->root && x->color == RBTREE_BLACK)
+  {
+    // 대체 노드가 부모의 왼쪽 자식 노드인 경우
+    if(x == x->parent->left)
+    {
+      node_t *sibling_node = x->parent->right;
+
+      // 1) 형제 노드가 RED인 경우
+      if(sibling_node->color == RBTREE_RED)
+      {
+        x->parent->color = RBTREE_RED;
+        sibling_node->color = RBTREE_BLACK;
+        rotate_left(t, sibling_node->parent);
+        sibling_node = x->parent->right;
+      }
+
+      // 형제 노드가 BLACK인 경우만 존재
+      // 2) 형제 노드의 두 자식 모두 BLACK인 경우
+      if(((sibling_node->left->color) == RBTREE_BLACK) && ((sibling_node->right->color) == RBTREE_BLACK))
+      {
+        sibling_node->color = RBTREE_RED;
+        x = x->parent;
+      }
+      else
+      {
+        // 자식 노드 둘 중 하나만 RED인 경우
+        // 3) 형제 노드의 왼쪽 자식이 RED인 경우 -> 회전을 통해 우정렬 필요
+        if((sibling_node->left->color) == RBTREE_RED)
+        {
+          sibling_node->color = RBTREE_RED;
+          sibling_node->left->color = RBTREE_BLACK;
+          rotate_right(t, sibling_node);
+          sibling_node = x->parent->right;
+        }
+        // 4) 형제 노드의 오른쪽 자식이 RED인 경우
+        sibling_node->color = x->parent->color;
+        x->parent->color = RBTREE_BLACK;
+        sibling_node->right->color = RBTREE_BLACK;
+        rotate_left(t, x->parent);
+        x = t->root; // while문 종료
+      }
+    }
+    // 대체 노드가 부모의 오른쪽 노드인 경우
+    else
+    {
+      node_t *sibling_node = x->parent->left;
+
+      // 1) 형제 노드가 RED인 경우
+      if(sibling_node->color == RBTREE_RED)
+      {
+        x->parent->color = RBTREE_RED;
+        sibling_node->color = RBTREE_BLACK;
+        rotate_right(t, x->parent);
+        sibling_node = x->parent->left;
+      }
+
+      // 2) 형제, 형제의 두 자식 노드 모두 BLACK인 경우
+      if(((sibling_node->left->color) == RBTREE_BLACK) && ((sibling_node->right->color) == RBTREE_BLACK))
+      {
+        sibling_node->color = RBTREE_RED;
+        x = x->parent;
+      }
+      else
+      {
+        if((sibling_node->right->color) == RBTREE_RED)
+        {
+          sibling_node->color = RBTREE_RED;
+          sibling_node->right->color = RBTREE_BLACK;
+          rotate_left(t, sibling_node);
+          sibling_node = x->parent->left;
+        }
+        sibling_node->color = x->parent->color;
+        sibling_node->left->color = RBTREE_BLACK;
+        x->parent->color = RBTREE_BLACK;
+        rotate_right(t, x->parent);
+        x = t->root; // while문 종료
+      }
+    }
+  }
+
+  x->color = RBTREE_BLACK;
+}
+
 int rbtree_erase(rbtree *t, node_t *p) {
-  // TODO: implement erase
+  // 삭제할 노드 & 삭제 노드의 대체 노드
+  node_t *deleted_node = p;
+  int original_color_deleted_node = deleted_node->color;
+  node_t *replacing_node;
+
+  // 1) 자식 노드가 1개인 경우 (왼쪽 자식이 nil)
+  if(p->left == t->nil)
+  {
+    replacing_node = p->right;
+    rbtree_transplant(t, p, p->right);
+  }
+  // 2) 자식 노드가 1개인 경우 (오른쪽 자식이 nil)
+  else if(p->right == t->nil)
+  {
+    replacing_node = p->left;
+    rbtree_transplant(t, p, p->left);
+  }
+  // 3) 자식 노드가 2개인 경우
+  else
+  {
+    // 다시 노드 설정
+    deleted_node = rbtree_minimum(t, p->right); // 우측 서브트리에서의 최소값 찾기
+    original_color_deleted_node = deleted_node->color;
+    replacing_node = deleted_node->right;
+
+    // 후계자가 삭제할 노드의 바로 오른쪽 자식이 아닌 경우
+    if(deleted_node != p->right)
+    {
+      rbtree_transplant(t, deleted_node, deleted_node->right);
+      deleted_node->right = p->right;
+      deleted_node->right->parent = deleted_node;
+    }
+    else
+    {
+      // 후계자가 삭제할 노드의 바로 오른쪽 자식인 경우
+      replacing_node->parent = deleted_node;
+    }
+
+    rbtree_transplant(t, p, deleted_node);
+    deleted_node->left = p->left;
+    deleted_node->left->parent = deleted_node;
+    deleted_node->color = p->color;
+  }
+
+  // 지워지는 노드의 색이 BLACK이라면 fixup 진행
+  if(original_color_deleted_node == RBTREE_BLACK)
+  {
+    rbtree_erase_fixup(t, replacing_node);
+  }
+
+  free(p);
+
   return 0;
 }
 
