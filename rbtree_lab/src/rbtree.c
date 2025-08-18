@@ -445,7 +445,29 @@ int rbtree_erase(rbtree *t, node_t *p) {
   return 0;
 }
 
-int rbtree_to_array(const rbtree *t, key_t *arr, const size_t n) {
-  // TODO: implement to_arraysqqq
+void rbtree_inorder(rbtree *t, node_t *node, key_t *arr, size_t *index)
+{
+  // 기저조건
+  if(node == (t->nil))
+  {
+    return;
+  }
+
+  // 왼쪽 서브트리 순회
+  rbtree_inorder(t, node->left, arr, index);
+  
+  // 현재 노드 처리
+  arr[*index] = node->key;
+  (*index) += 1;
+  
+  // 오른쪽 서브트리 순회
+  rbtree_inorder(t, node->right, arr, index);
+}
+
+int rbtree_to_array(const rbtree *t, key_t *arr) {
+  size_t index = 0;
+  // 중위순회를 이용해서 배열로 만들기
+  rbtree_inorder(t, t->root, arr, &index);
+  
   return 0;
 }
