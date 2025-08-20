@@ -123,7 +123,7 @@ void rb_insert(RBTree *tree, int key)
     {
         tree->root = newNode;
     }
-    else if(y == y->parent->left)
+    else if(newNode->data < y->data)
     {
         y->left = newNode;
     }
